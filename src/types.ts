@@ -3,6 +3,7 @@ export type Plan = {
   name: string
   plannedAmount: number
   status: 'pending' | 'completed'
+  month: string
 }
 
 export type HistoryEntry = {
