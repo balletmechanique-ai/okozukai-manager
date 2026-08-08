@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import {
   Alert, AppBar, Box, Button, Chip, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, Fab, IconButton, List, ListItem, ListItemButton,
@@ -161,7 +161,7 @@ export default function App() {
     setDialog('plan')
   }
 
-  const openEditPlan = (plan: Plan, event?: React.MouseEvent) => {
+  const openEditPlan = (plan: Plan, event?: MouseEvent) => {
     event?.stopPropagation()
     setSelectedPlan(plan)
     setPlanDialogMode('edit')
@@ -460,7 +460,7 @@ function FormDialog({
 }: {
   open: boolean
   title: string
-  children: React.ReactNode
+  children: ReactNode
   onClose: () => void
   onSave: () => void
   saveDisabled: boolean
