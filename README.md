@@ -56,5 +56,5 @@ PWAとしてインストールしても、データはその端末内だけに�
 公開URLは通常、次の形式です。
 
 ```text
-https://GitHubのユーザー名.github.io/okozukai-manager/
+https://balletmechanique-ai.github.io/okozukai-manager/
 ```
