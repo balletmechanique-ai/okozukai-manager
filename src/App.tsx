@@ -13,7 +13,7 @@ import type { AppData, HistoryEntry, Plan } from './types'
 import { currentMonth, formatMonth, loadData, nextMonth, saveData } from './storage'
 
 type Page = 'home' | 'plans'
-type DialogType = 'menu' | 'plan' | 'expense' | 'income' | 'allowance' | null
+type DialogType = 'menu' | 'plan' | 'expense' | 'income' | 'allowance' | 'history' | null
 type PlanDialogMode = 'add' | 'edit' | 'record'
 
 const yen = (value: number) => `¥${value.toLocaleString('ja-JP')}`
@@ -37,6 +37,7 @@ export default function App() {
   const [dialog, setDialog] = useState<DialogType>(null)
   const [planDialogMode, setPlanDialogMode] = useState<PlanDialogMode>('add')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [selectedRecord, setSelectedRecord] = useState<HistoryEntry | null>(null)
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
 
@@ -45,6 +46,11 @@ export default function App() {
   const monthPlans = useMemo(
     () => data.plans.filter((plan) => plan.month === viewMonth),
     [data.plans, viewMonth],
+  )
+
+  const monthPlanTotal = useMemo(
+    () => monthPlans.reduce((sum, plan) => sum + plan.plannedAmount, 0),
+    [monthPlans],
   )
 
   const monthRecords = useMemo(
@@ -65,7 +71,13 @@ export default function App() {
   }, [data])
 
   const tone = totals.remaining < 0 ? 'error' : totals.remaining <= 2000 ? 'warning' : 'success'
-  const resetForm = () => { setName(''); setAmount(''); setSelectedPlan(null); setPlanDialogMode('add') }
+  const resetForm = () => {
+    setName('')
+    setAmount('')
+    setSelectedPlan(null)
+    setSelectedRecord(null)
+    setPlanDialogMode('add')
+  }
   const closeDialog = () => { setDialog(null); resetForm() }
   const numberAmount = Number(amount)
   const validNonNegativeAmount = Number.isFinite(numberAmount) && numberAmount >= 0
@@ -139,6 +151,27 @@ export default function App() {
       extra: entry.kind === 'income' ? Math.max(0, old.extra - entry.amount) : old.extra,
       history: old.history.filter((item) => item.id !== entry.id),
     }))
+  }
+
+  const openEditRecord = (entry: HistoryEntry) => {
+    setSelectedRecord(entry)
+    setName(entry.name)
+    setAmount(String(entry.amount))
+    setDialog('history')
+  }
+
+  const updateRecord = () => {
+    if (!selectedRecord || !name.trim() || !validNonNegativeAmount) return
+    setData((old) => ({
+      ...old,
+      extra: selectedRecord.kind === 'income'
+        ? Math.max(0, old.extra - selectedRecord.amount + numberAmount)
+        : old.extra,
+      history: old.history.map((entry) => entry.id === selectedRecord.id
+        ? { ...entry, name: name.trim(), amount: numberAmount }
+        : entry),
+    }))
+    closeDialog()
   }
 
   const saveAllowance = () => {
@@ -221,7 +254,7 @@ export default function App() {
             <Empty text="記録はまだありません" />
           ) : (
             <Paper>
-              <RecordList entries={monthRecords} onDelete={deleteRecord} />
+              <RecordList entries={monthRecords} onEdit={openEditRecord} onDelete={deleteRecord} />
             </Paper>
           )}
         </>}
@@ -239,6 +272,13 @@ export default function App() {
               </Button>
             ))}
           </Stack>
+
+          <Paper sx={{ px: 2.5, py: 2, mb: 2 }}>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography color="text.secondary">{formatMonth(viewMonth)}の予定合計</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>{yen(monthPlanTotal)}</Typography>
+            </Stack>
+          </Paper>
 
           {monthPlans.length === 0 ? (
             <Empty text={`${formatMonth(viewMonth)}の予定はまだありません`} />
@@ -305,6 +345,7 @@ export default function App() {
         <DialogContent>
           <Stack spacing={1} sx={{ pt: 1 }}>
             <Button size="large" variant="outlined" onClick={() => openAddPlan(data.month)}>予定を追加</Button>
+            <Button size="large" variant="outlined" onClick={() => openAddPlan(nextMonth(data.month))}>来月の予定を追加</Button>
             <Button size="large" variant="outlined" onClick={() => setDialog('expense')}>予定外の支出</Button>
             <Button size="large" variant="outlined" onClick={() => setDialog('income')}>お小遣いを追加</Button>
           </Stack>
@@ -344,6 +385,17 @@ export default function App() {
         <MoneyField label="金額" value={amount} onChange={setAmount} min={0} />
       </FormDialog>
 
+      <FormDialog
+        open={dialog === 'history'}
+        title="記録を編集"
+        onClose={closeDialog}
+        onSave={updateRecord}
+        saveDisabled={!name.trim() || !validNonNegativeAmount}
+      >
+        <TextField autoFocus label="項目名" value={name} onChange={(event) => setName(event.target.value)} fullWidth />
+        <MoneyField label="金額" value={amount} onChange={setAmount} min={0} />
+      </FormDialog>
+
       <FormDialog open={dialog === 'income'} title="お小遣いを追加" onClose={closeDialog} onSave={addIncome} saveDisabled={!validPositiveAmount}>
         <MoneyField autoFocus label="追加金額" value={amount} onChange={setAmount} />
       </FormDialog>
@@ -376,7 +428,15 @@ export default function App() {
   )
 }
 
-function RecordList({ entries, onDelete }: { entries: HistoryEntry[]; onDelete: (entry: HistoryEntry) => void }) {
+function RecordList({
+  entries,
+  onEdit,
+  onDelete,
+}: {
+  entries: HistoryEntry[]
+  onEdit: (entry: HistoryEntry) => void
+  onDelete: (entry: HistoryEntry) => void
+}) {
   return (
     <List disablePadding>
       {entries.map((entry, index) => (
@@ -384,16 +444,21 @@ function RecordList({ entries, onDelete }: { entries: HistoryEntry[]; onDelete: 
           {index > 0 && <Divider />}
           <ListItem
             secondaryAction={
-              <IconButton edge="end" aria-label="削除" onClick={() => onDelete(entry)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
+              <Stack direction="row" spacing={0.5}>
+                <IconButton edge="end" aria-label="編集" onClick={() => onEdit(entry)}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton edge="end" aria-label="削除" onClick={() => onDelete(entry)}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             }
           >
             <ListItemText
               primary={entry.name}
               secondary={new Date(entry.date).toLocaleDateString('ja-JP')}
             />
-            <Typography sx={{ fontWeight: 700, color: entry.kind === 'income' ? 'success.main' : 'text.primary', mr: 5 }}>
+            <Typography sx={{ fontWeight: 700, color: entry.kind === 'income' ? 'success.main' : 'text.primary', mr: 10 }}>
               {entry.kind === 'income' ? '+' : '-'}{yen(entry.amount)}
             </Typography>
           </ListItem>

@@ -2,12 +2,16 @@ import type { AppData } from './types'
 
 const STORAGE_KEY = 'okozukai-manager-v1'
 
-export const currentMonth = () => new Date().toISOString().slice(0, 7)
+export const currentMonth = () => {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
 
 export const nextMonth = (month = currentMonth()) => {
-  const date = new Date(`${month}-01T00:00:00`)
-  date.setMonth(date.getMonth() + 1)
-  return date.toISOString().slice(0, 7)
+  const [year, value] = month.split('-').map(Number)
+  const nextYear = value === 12 ? year + 1 : year
+  const nextValue = value === 12 ? 1 : value + 1
+  return `${nextYear}-${String(nextValue).padStart(2, '0')}`
 }
 
 export const formatMonth = (month: string) => {
