@@ -212,8 +212,16 @@ export default function App() {
               <ArrowBackIcon />
             </IconButton>
           )}
+          {page === 'home' && (
+            <Box
+              component="img"
+              src={`${import.meta.env.BASE_URL}pwa-192x192.png`}
+              alt=""
+              sx={{ width: 32, height: 32, borderRadius: 1, mr: 1.25, flexShrink: 0 }}
+            />
+          )}
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {page === 'home' ? '💰 おこづかい' : '予定一覧'}
+            {page === 'home' ? 'おこづかい' : '予定一覧'}
           </Typography>
         </Toolbar>
       </AppBar>

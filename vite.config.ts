@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['apple-touch-icon.png'],
+      includeAssets: ['apple-touch-icon.png', 'favicon.ico', 'favicon-32x32.png'],
       manifest: {
         name: 'おこづかいマネージャー',
         short_name: 'おこづかい',
         description: '今月あといくら自由に使えるかを確認するアプリ',
-        theme_color: '#2e7d32',
-        background_color: '#f6f7f3',
+        theme_color: '#c04e61',
+        background_color: '#fdf4f1',
         display: 'standalone',
         start_url: '/okozukai-manager/',
         scope: '/okozukai-manager/',
