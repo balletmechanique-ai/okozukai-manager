@@ -40,6 +40,7 @@ export default function App() {
   const [selectedRecord, setSelectedRecord] = useState<HistoryEntry | null>(null)
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
+  const [recordDate, setRecordDate] = useState('')
 
   useEffect(() => saveData(data), [data])
 
@@ -74,6 +75,7 @@ export default function App() {
   const resetForm = () => {
     setName('')
     setAmount('')
+    setRecordDate('')
     setSelectedPlan(null)
     setSelectedRecord(null)
     setPlanDialogMode('add')
@@ -82,6 +84,7 @@ export default function App() {
   const numberAmount = Number(amount)
   const validNonNegativeAmount = Number.isFinite(numberAmount) && numberAmount >= 0
   const validPositiveAmount = Number.isFinite(numberAmount) && numberAmount > 0
+  const validRecordDate = /^\d{4}-\d{2}-\d{2}$/.test(recordDate)
 
   const addPlan = () => {
     if (!name.trim() || !validNonNegativeAmount) return
@@ -157,18 +160,19 @@ export default function App() {
     setSelectedRecord(entry)
     setName(entry.name)
     setAmount(String(entry.amount))
+    setRecordDate(entry.date.slice(0, 10))
     setDialog('history')
   }
 
   const updateRecord = () => {
-    if (!selectedRecord || !name.trim() || !validNonNegativeAmount) return
+    if (!selectedRecord || !name.trim() || !validNonNegativeAmount || !validRecordDate) return
     setData((old) => ({
       ...old,
       extra: selectedRecord.kind === 'income'
         ? Math.max(0, old.extra - selectedRecord.amount + numberAmount)
         : old.extra,
       history: old.history.map((entry) => entry.id === selectedRecord.id
-        ? { ...entry, name: name.trim(), amount: numberAmount }
+        ? { ...entry, date: `${recordDate}T12:00:00.000Z`, name: name.trim(), amount: numberAmount }
         : entry),
     }))
     closeDialog()
@@ -398,10 +402,18 @@ export default function App() {
         title="記録を編集"
         onClose={closeDialog}
         onSave={updateRecord}
-        saveDisabled={!name.trim() || !validNonNegativeAmount}
+        saveDisabled={!name.trim() || !validNonNegativeAmount || !validRecordDate}
       >
         <TextField autoFocus label="項目名" value={name} onChange={(event) => setName(event.target.value)} fullWidth />
         <MoneyField label="金額" value={amount} onChange={setAmount} min={0} />
+        <TextField
+          label="日付"
+          type="date"
+          value={recordDate}
+          onChange={(event) => setRecordDate(event.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          fullWidth
+        />
       </FormDialog>
 
       <FormDialog open={dialog === 'income'} title="お小遣いを追加" onClose={closeDialog} onSave={addIncome} saveDisabled={!validPositiveAmount}>
